@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, env, time::Instant};
 
 use itertools::Itertools;
 use rand::Rng;
@@ -160,29 +160,35 @@ fn run_sims(players: &[[f64; 10]], num_to_return: usize) -> Vec<([f64; 10], usiz
 }
 
 fn main() {
+    // Collect the command line arguments
+    let args: Vec<String> = env::args().collect();
+    // The first argument is the number of generations to run
+    let n: usize = args[1].parse().unwrap_or(1000);
+    // The second argument is the size of the pool to test each time
+    let pool_size: usize = args[2].parse().unwrap_or(100);
+    // The third argument is the number of children to generate each time
+    let n_children: usize = args[3].parse().unwrap_or(10);
+
     // Generate 100 random players
-    let mut players = (0..100)
+    let mut players = (0..pool_size)
         .map(|_| generate_uniform_random_distribution())
         .collect::<Vec<_>>();
 
     let mut best_players = run_sims(&players, 10);
 
-    let n = 1000;
-
     // time how long it takes to do n iterations
     let starttime = Instant::now();
     for gen_number in 0..n {
-        // Print out the generation if it's a multiple of 10
-        if gen_number % 100 == 0 {
+        // Print out the generation if it's a multiple of 500
+        if gen_number % 500 == 0 {
             println!("Generation {}", gen_number);
-            // println!("{:?}", best_players);
         }
 
         best_players = run_sims(&players, 10);
         // Generate 10 random children from the best players, and repeat 10 ten times
         players = best_players
             .iter()
-            .map(|(p, _)| generate_random_children(*p, 10))
+            .map(|(p, _)| generate_random_children(*p, n_children))
             .flatten()
             .collect::<Vec<_>>();
     }
