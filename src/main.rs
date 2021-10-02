@@ -117,13 +117,14 @@ fn p1_wins(p1: [f64; 10], p2: [f64; 10]) -> bool {
     let mut p2_score = 0_f64;
 
     for (castle_num, (p1, p2)) in p1.iter().zip(p2.iter()).enumerate() {
+        let score = castle_num + 1;
         if p1 > p2 {
-            p1_score += castle_num as f64;
+            p1_score += score as f64;
         } else if p2 > p1 {
-            p2_score += castle_num as f64;
+            p2_score += score as f64;
         } else {
-            p1_score += castle_num as f64 / 2.0;
-            p2_score += castle_num as f64 / 2.0;
+            p1_score += score as f64 / 2.0;
+            p2_score += score as f64 / 2.0;
         }
     }
 
