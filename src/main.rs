@@ -72,7 +72,11 @@ fn array_to_split_points(distribution: [f64; 10]) -> [f64; 9] {
 
 // generate_random_children will take in a [f64; 10] array and create a set of children
 // from it, with random mutations, about +-5 per castle
-fn generate_random_children(arr: [f64; 10], n_children: usize) -> Vec<[f64; 10]> {
+fn generate_random_children(
+    arr: [f64; 10],
+    n_children: usize,
+    variance_range: f64,
+) -> Vec<[f64; 10]> {
     let mut rng = rand::thread_rng();
     let mut children_splits = Vec::new();
 
@@ -82,7 +86,7 @@ fn generate_random_children(arr: [f64; 10], n_children: usize) -> Vec<[f64; 10]>
     for _ in 0..n_children {
         let mut child_splits = split_points;
         for i in 0..child_splits.len() {
-            let new_num = child_splits[i] + rng.gen_range(-5.0..5.0);
+            let new_num = child_splits[i] + rng.gen_range(-variance_range..variance_range);
             // Make sure the new number is between 0.0 and 100.0
             if new_num < 0.0 {
                 child_splits[i] = 0.0;
@@ -188,6 +192,13 @@ fn main() {
                 .help("How many winners should be kept from each round")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("size_distribution")
+                .short("s")
+                .long("size_distribution")
+                .help("How wide of a rangh, plus and minus, to go from each split point")
+                .takes_value(true),
+        )
         .get_matches();
 
     // Get the number of generations to run from matches
@@ -211,6 +222,13 @@ fn main() {
         .parse()
         .expect("Could not parse the number of children to generate");
 
+    // Get the size_distribution with which to vary the split points
+    let size_distribution: f64 = matches
+        .value_of("size_distribution")
+        .unwrap_or("5.0")
+        .parse()
+        .expect("Could not parse the size distribution");
+
     // Create the initial population
     let mut players = (0..n_to_keep * n_children)
         .map(|_| generate_uniform_random_distribution())
@@ -230,7 +248,7 @@ fn main() {
         // Generate n_children random children from the best players
         players = best_players
             .iter()
-            .flat_map(|(p, _)| generate_random_children(*p, n_children))
+            .flat_map(|(p, _)| generate_random_children(*p, n_children, size_distribution))
             .collect::<Vec<_>>();
     }
     // Print out how long each iteration took
