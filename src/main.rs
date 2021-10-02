@@ -15,7 +15,7 @@ fn gen_uniform_random_split_points() -> [f64; 9] {
     // These will be the "splitting points", and the difference between all of them will
     // be the number of troops to send to that castle.
     let mut rng = rand::thread_rng();
-    let mut split_points = [0f64; 9];
+    let mut split_points = [0_f64; 9];
 
     // Fill the array with random numbers between 0.0 and 100.0.
     for i in 0..split_points.len() {
@@ -44,7 +44,7 @@ fn split_points_to_array(split_points: &[f64; 9]) -> [f64; 10] {
     let middle_vals = split_points.windows(2).map(|w| w[1] - w[0]);
 
     // Put all the values together into an array of length 10
-    let mut result = [0f64; 10];
+    let mut result = [0_f64; 10];
     result[0] = first_val;
     result[9] = last_val;
     for (i, val) in middle_vals.enumerate() {
@@ -57,7 +57,7 @@ fn split_points_to_array(split_points: &[f64; 9]) -> [f64; 10] {
 // array_to_split_points will take a [f64; 10] array of distances between split points,
 // and convert it to a [f64; 9] array of split points.
 fn array_to_split_points(distribution: [f64; 10]) -> [f64; 9] {
-    let mut split_points = [0f64; 9];
+    let mut split_points = [0_f64; 9];
     for (idx, &item) in distribution.iter().enumerate() {
         if idx == 0 {
             split_points[idx] = item;
@@ -80,7 +80,7 @@ fn generate_random_children(arr: [f64; 10], n_children: usize) -> Vec<[f64; 10]>
     let split_points = array_to_split_points(arr);
 
     for _ in 0..n_children {
-        let mut child_splits = split_points.clone();
+        let mut child_splits = split_points;
         for i in 0..child_splits.len() {
             let new_num = child_splits[i] + rng.gen_range(-5.0..5.0);
             // Make sure the new number is between 0.0 and 100.0
@@ -113,14 +113,14 @@ fn generate_random_children(arr: [f64; 10], n_children: usize) -> Vec<[f64; 10]>
 
 // sim will compare two length 10 arrays and see who wins
 fn p1_wins(p1: [f64; 10], p2: [f64; 10]) -> bool {
-    let mut p1_score = 0f64;
-    let mut p2_score = 0f64;
+    let mut p1_score = 0_f64;
+    let mut p2_score = 0_f64;
 
     for (castle_num, (p1, p2)) in p1.iter().zip(p2.iter()).enumerate() {
         if p1 > p2 {
             p1_score += castle_num as f64;
         } else if p2 > p1 {
-            p2_score += castle_num as f64
+            p2_score += castle_num as f64;
         } else {
             p1_score += castle_num as f64 / 2.0;
             p2_score += castle_num as f64 / 2.0;
