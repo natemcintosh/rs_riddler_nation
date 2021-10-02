@@ -216,7 +216,7 @@ fn main() {
         .map(|_| generate_uniform_random_distribution())
         .collect::<Vec<_>>();
 
-    let mut best_players = run_sims(&players, 10);
+    let mut best_players = run_sims(&players, n_to_keep);
 
     // time how long it takes to do n iterations
     let starttime = Instant::now();
@@ -226,7 +226,7 @@ fn main() {
             println!("Generation {}", gen_number);
         }
 
-        best_players = run_sims(&players, 10);
+        best_players = run_sims(&players, n_to_keep);
         // Generate n_children random children from the best players
         players = best_players
             .iter()
