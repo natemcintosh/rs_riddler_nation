@@ -1,5 +1,6 @@
-use std::{collections::HashMap, env, time::Instant};
+use std::{collections::HashMap, time::Instant};
 
+use clap::{App, Arg};
 use itertools::Itertools;
 use rand::Rng;
 
@@ -160,17 +161,57 @@ fn run_sims(players: &[[f64; 10]], num_to_return: usize) -> Vec<([f64; 10], usiz
 }
 
 fn main() {
-    // Collect the command line arguments
-    let args: Vec<String> = env::args().collect();
-    // The first argument is the number of generations to run
-    let n: usize = args[1].parse().unwrap_or(1000);
-    // The second argument is the size of the pool to test each time
-    let pool_size: usize = args[2].parse().unwrap_or(100);
-    // The third argument is the number of children to generate each time
-    let n_children: usize = args[3].parse().unwrap_or(10);
+    // Create the clap App
+    let matches = App::new("rs_battle_for_nation")
+        .version("0.1.0")
+        .author("Nathan McIntosh")
+        .about("A tool to do generational improvement for the Riddler Nation Game")
+        .arg(
+            Arg::with_name("num_generations")
+                .short("g")
+                .long("num_generations")
+                .help("How many generations should be run")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("num_children")
+                .short("c")
+                .long("num_children")
+                .help("How many children should be spawned from each winner")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("num_to_keep")
+                .short("k")
+                .long("num_to_keep")
+                .help("How many winners should be kept from each round")
+                .takes_value(true),
+        )
+        .get_matches();
 
-    // Generate 100 random players
-    let mut players = (0..pool_size)
+    // Get the number of generations to run from matches
+    let n: usize = matches
+        .value_of("num_generations")
+        .unwrap_or("100")
+        .parse()
+        .expect("Could not parse the number of generations to run");
+
+    // Get the number of children to generate each time
+    let n_children: usize = matches
+        .value_of("num_children")
+        .unwrap_or("10")
+        .parse()
+        .expect("Could not parse the number of children to generate");
+
+    // Get the number how many to keep each time
+    let n_to_keep: usize = matches
+        .value_of("num_to_keep")
+        .unwrap_or("10")
+        .parse()
+        .expect("Could not parse the number of children to generate");
+
+    // Create the initial population
+    let mut players = (0..n_to_keep * n_children)
         .map(|_| generate_uniform_random_distribution())
         .collect::<Vec<_>>();
 
@@ -185,11 +226,10 @@ fn main() {
         }
 
         best_players = run_sims(&players, 10);
-        // Generate 10 random children from the best players, and repeat 10 ten times
+        // Generate n_children random children from the best players
         players = best_players
             .iter()
-            .map(|(p, _)| generate_random_children(*p, n_children))
-            .flatten()
+            .flat_map(|(p, _)| generate_random_children(*p, n_children))
             .collect::<Vec<_>>();
     }
     // Print out how long each iteration took
