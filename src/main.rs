@@ -4,18 +4,21 @@ use clap::{App, Arg};
 use itertools::Itertools;
 use rand::Rng;
 
+const NUM_CASTLES: usize = 10;
+const NUM_SPLITS: usize = NUM_CASTLES - 1;
+
 // generate_uniform_random_distribution will create 10 numbers, between 0.o and 100.0,
 // which sum to 100.0.
-fn generate_uniform_random_distribution() -> [f64; 10] {
+fn generate_uniform_random_distribution() -> [f64; NUM_CASTLES] {
     split_points_to_array(&gen_uniform_random_split_points())
 }
 
-fn gen_uniform_random_split_points() -> [f64; 9] {
+fn gen_uniform_random_split_points() -> [f64; NUM_SPLITS] {
     // To ensure they sum to 100.0, first generate 9 numbers between 0.0 and 100.0.
     // These will be the "splitting points", and the difference between all of them will
     // be the number of troops to send to that castle.
     let mut rng = rand::thread_rng();
-    let mut split_points = [0_f64; 9];
+    let mut split_points = [0_f64; NUM_SPLITS];
 
     // Fill the array with random numbers between 0.0 and 100.0.
     for i in 0..split_points.len() {
@@ -33,9 +36,9 @@ fn gen_uniform_random_split_points() -> [f64; 9] {
     split_points
 }
 
-// split_points_to_array takes a [f64; 9] array of split points, and converts it to a
-// [f64; 10] array of the distances between the split points.
-fn split_points_to_array(split_points: &[f64; 9]) -> [f64; 10] {
+// split_points_to_array takes a [f64; NUM_SPLITS] array of split points, and converts it to a
+// [f64; NUM_CASTLES] array of the distances between the split points.
+fn split_points_to_array(split_points: &[f64; NUM_SPLITS]) -> [f64; NUM_CASTLES] {
     // Calculate the difference between each number and the one before it. The first
     // number in this array is just the first split point, and the last number is
     // 100.0 - the last split point.
@@ -44,7 +47,7 @@ fn split_points_to_array(split_points: &[f64; 9]) -> [f64; 10] {
     let middle_vals = split_points.windows(2).map(|w| w[1] - w[0]);
 
     // Put all the values together into an array of length 10
-    let mut result = [0_f64; 10];
+    let mut result = [0_f64; NUM_CASTLES];
     result[0] = first_val;
     result[9] = last_val;
     for (i, val) in middle_vals.enumerate() {
@@ -54,10 +57,10 @@ fn split_points_to_array(split_points: &[f64; 9]) -> [f64; 10] {
     result
 }
 
-// array_to_split_points will take a [f64; 10] array of distances between split points,
-// and convert it to a [f64; 9] array of split points.
-fn array_to_split_points(distribution: [f64; 10]) -> [f64; 9] {
-    let mut split_points = [0_f64; 9];
+// array_to_split_points will take a [f64; NUM_CASTLES] array of distances between split points,
+// and convert it to a [f64; NUM_SPLITS] array of split points.
+fn array_to_split_points(distribution: [f64; NUM_CASTLES]) -> [f64; NUM_SPLITS] {
+    let mut split_points = [0_f64; NUM_SPLITS];
     for (idx, &item) in distribution.iter().enumerate() {
         if idx == 0 {
             split_points[idx] = item;
@@ -70,13 +73,13 @@ fn array_to_split_points(distribution: [f64; 10]) -> [f64; 9] {
     split_points
 }
 
-// generate_random_children will take in a [f64; 10] array and create a set of children
+// generate_random_children will take in a [f64; NUM_CASTLES] array and create a set of children
 // from it, with random mutations, about +-5 per castle
 fn generate_random_children(
-    arr: [f64; 10],
+    arr: [f64; NUM_CASTLES],
     n_children: usize,
     variance_range: f64,
-) -> Vec<[f64; 10]> {
+) -> Vec<[f64; NUM_CASTLES]> {
     let mut rng = rand::thread_rng();
     let mut children_splits = Vec::new();
 
@@ -108,7 +111,7 @@ fn generate_random_children(
         children_splits.push(child_splits);
     }
 
-    // Convert the children to a [f64; 10] array
+    // Convert the children to a [f64; NUM_CASTLES] array
     children_splits
         .iter()
         .map(|child| split_points_to_array(child))
@@ -116,19 +119,19 @@ fn generate_random_children(
 }
 
 // sim will compare two length 10 arrays and see who wins
-fn p1_wins(p1: [f64; 10], p2: [f64; 10]) -> bool {
+fn p1_wins(p1: [f64; NUM_CASTLES], p2: [f64; NUM_CASTLES]) -> bool {
     let mut p1_score = 0_f64;
     let mut p2_score = 0_f64;
 
     for (castle_num, (p1, p2)) in p1.iter().zip(p2.iter()).enumerate() {
-        let score = castle_num + 1;
+        let score = (castle_num + 1) as f64;
         if p1 > p2 {
-            p1_score += score as f64;
+            p1_score += score;
         } else if p2 > p1 {
-            p2_score += score as f64;
+            p2_score += score;
         } else {
-            p1_score += score as f64 / 2.0;
-            p2_score += score as f64 / 2.0;
+            p1_score += score / 2.0;
+            p2_score += score / 2.0;
         }
     }
 
@@ -136,7 +139,10 @@ fn p1_wins(p1: [f64; 10], p2: [f64; 10]) -> bool {
 }
 
 // run_sims takes in a bunch of players, and returns some number of the best players
-fn run_sims(players: &[[f64; 10]], num_to_return: usize) -> Vec<([f64; 10], usize)> {
+fn run_sims(
+    players: &[[f64; NUM_CASTLES]],
+    num_to_return: usize,
+) -> Vec<([f64; NUM_CASTLES], usize)> {
     // Create a HashMap to store the player's index and their score
     let mut result_map: HashMap<usize, usize> = (0..players.len()).map(|idx| (idx, 0)).collect();
 
