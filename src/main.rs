@@ -235,8 +235,11 @@ fn main() {
         .parse()
         .expect("Could not parse the size distribution");
 
+    let pool_size: usize = n_children * n_to_keep;
+    println!("Pool size: {}", pool_size);
+
     // Create the initial population
-    let mut players = (0..n_to_keep * n_children)
+    let mut players = (0..pool_size)
         .map(|_| generate_uniform_random_distribution())
         .collect::<Vec<_>>();
 
@@ -260,7 +263,7 @@ fn main() {
     // Print out how long each iteration took
     println!(
         "Each iteration took: {} ms",
-        starttime.elapsed().as_millis() as f64 / n as f64
+        starttime.elapsed().as_secs_f64() / 1e-3 / (n as f64)
     );
 
     // Print the best players
