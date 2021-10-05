@@ -9,45 +9,45 @@ const NUM_SPLITS: usize = NUM_CASTLES - 1;
 
 // generate_uniform_random_distribution will create 10 numbers, between 0.0 and 100.0,
 // which sum to 100.0.
-fn generate_uniform_random_distribution() -> [f64; NUM_CASTLES] {
+fn generate_uniform_random_distribution() -> [i16; NUM_CASTLES] {
     split_points_to_array(&gen_uniform_random_split_points())
 }
 
-fn gen_uniform_random_split_points() -> [f64; NUM_SPLITS] {
+fn gen_uniform_random_split_points() -> [i16; NUM_SPLITS] {
     // To ensure they sum to 100.0, first generate 9 numbers between 0.0 and 100.0.
     // These will be the "splitting points", and the difference between all of them will
     // be the number of troops to send to that castle.
     let mut rng = rand::thread_rng();
-    let mut split_points = [0_f64; NUM_SPLITS];
+    let mut split_points = [0_i16; NUM_SPLITS];
 
     // Fill the array with random numbers between 0.0 and 100.0.
     for i in 0..split_points.len() {
-        split_points[i] = rng.gen_range(0.0..=100.0);
+        split_points[i] = rng.gen_range(0..=100);
     }
 
     // Sort the split_points, so that the numbers are in ascending order.
     split_points.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     // Round all of the numbers to 1 decimal place
-    for i in 0..split_points.len() {
-        split_points[i] = split_points[i].trunc() + (split_points[i].fract() * 10.0).trunc() / 10.0;
-    }
+    // for i in 0..split_points.len() {
+    //     split_points[i] = split_points[i].trunc() + (split_points[i].fract() * 10.0).trunc() / 10.0;
+    // }
 
     split_points
 }
 
-// split_points_to_array takes a [f64; NUM_SPLITS] array of split points, and converts it to a
-// [f64; NUM_CASTLES] array of the distances between the split points.
-fn split_points_to_array(split_points: &[f64; NUM_SPLITS]) -> [f64; NUM_CASTLES] {
+// split_points_to_array takes a [i16; NUM_SPLITS] array of split points, and converts it to a
+// [i16; NUM_CASTLES] array of the distances between the split points.
+fn split_points_to_array(split_points: &[i16; NUM_SPLITS]) -> [i16; NUM_CASTLES] {
     // Calculate the difference between each number and the one before it. The first
     // number in this array is just the first split point, and the last number is
     // 100.0 - the last split point.
     let first_val = split_points[0];
-    let last_val = 100.0 - split_points[split_points.len() - 1];
+    let last_val = 100 - split_points[split_points.len() - 1];
     let middle_vals = split_points.windows(2).map(|w| w[1] - w[0]);
 
     // Put all the values together into an array of length 10
-    let mut result = [0_f64; NUM_CASTLES];
+    let mut result = [0_i16; NUM_CASTLES];
     result[0] = first_val;
     result[9] = last_val;
     for (i, val) in middle_vals.enumerate() {
@@ -57,15 +57,15 @@ fn split_points_to_array(split_points: &[f64; NUM_SPLITS]) -> [f64; NUM_CASTLES]
     result
 }
 
-// array_to_split_points will take a [f64; NUM_CASTLES] array of distances between split points,
-// and convert it to a [f64; NUM_SPLITS] array of split points.
-fn array_to_split_points(distribution: [f64; NUM_CASTLES]) -> [f64; NUM_SPLITS] {
-    let mut split_points = [0_f64; NUM_SPLITS];
+// array_to_split_points will take a [i16; NUM_CASTLES] array of distances between split points,
+// and convert it to a [i16; NUM_SPLITS] array of split points.
+fn array_to_split_points(distribution: [i16; NUM_CASTLES]) -> [i16; NUM_SPLITS] {
+    let mut split_points = [0_i16; NUM_SPLITS];
     for (idx, &item) in distribution.iter().enumerate() {
         if idx == 0 {
             split_points[idx] = item;
         } else if idx == 9 {
-            split_points[idx - 1] = 100.0 - item;
+            split_points[idx - 1] = 100 - item;
         } else {
             split_points[idx] = split_points[idx - 1] + item;
         }
@@ -73,13 +73,13 @@ fn array_to_split_points(distribution: [f64; NUM_CASTLES]) -> [f64; NUM_SPLITS] 
     split_points
 }
 
-// generate_random_children will take in a [f64; NUM_CASTLES] array and create a set of children
+// generate_random_children will take in a [i16; NUM_CASTLES] array and create a set of children
 // from it, with random mutations, about +-5 per castle
 fn generate_random_children(
-    arr: [f64; NUM_CASTLES],
+    arr: [i16; NUM_CASTLES],
     n_children: usize,
-    variance_range: f64,
-) -> Vec<[f64; NUM_CASTLES]> {
+    variance_range: i16,
+) -> Vec<[i16; NUM_CASTLES]> {
     let mut rng = rand::thread_rng();
     let mut children_splits = Vec::new();
 
@@ -89,12 +89,17 @@ fn generate_random_children(
     for _ in 0..n_children {
         let mut child_splits = split_points;
         for i in 0..child_splits.len() {
-            let new_num = child_splits[i] + rng.gen_range(-variance_range..variance_range);
+            let is_positive = rng.gen::<i32>().is_positive();
+            let new_num = match is_positive {
+                true => child_splits[i] + rng.gen_range(0..variance_range),
+                false => child_splits[i] - rng.gen_range(0..variance_range),
+            };
+
             // Make sure the new number is between 0.0 and 100.0
-            if new_num < 0.0 {
-                child_splits[i] = 0.0;
-            } else if new_num > 100.0 {
-                child_splits[i] = 100.0
+            if new_num < 0 {
+                child_splits[i] = 0;
+            } else if new_num > 100 {
+                child_splits[i] = 100
             } else {
                 child_splits[i] = new_num;
             }
@@ -104,14 +109,14 @@ fn generate_random_children(
         child_splits.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         // Round all of the numbers to 1 decimal place
-        for i in 0..child_splits.len() {
-            child_splits[i] =
-                child_splits[i].trunc() + (child_splits[i].fract() * 10.0).trunc() / 10.0;
-        }
+        // for i in 0..child_splits.len() {
+        //     child_splits[i] =
+        //         child_splits[i].trunc() + (child_splits[i].fract() * 10).trunc() / 10;
+        // }
         children_splits.push(child_splits);
     }
 
-    // Convert the children to a [f64; NUM_CASTLES] array
+    // Convert the children to a [i16; NUM_CASTLES] array
     children_splits
         .iter()
         .map(|child| split_points_to_array(child))
@@ -119,19 +124,19 @@ fn generate_random_children(
 }
 
 // sim will compare two length 10 arrays and see who wins
-fn p1_wins(p1: [f64; NUM_CASTLES], p2: [f64; NUM_CASTLES]) -> bool {
-    let mut p1_score = 0_f64;
-    let mut p2_score = 0_f64;
+fn p1_wins(p1: [i16; NUM_CASTLES], p2: [i16; NUM_CASTLES]) -> bool {
+    let mut p1_score = 0_f32;
+    let mut p2_score = 0_f32;
 
     for (castle_num, (p1, p2)) in p1.iter().zip(p2.iter()).enumerate() {
-        let score = (castle_num + 1) as f64;
+        let score = (castle_num + 1) as i16;
         if p1 > p2 {
-            p1_score += score;
+            p1_score += score as f32;
         } else if p2 > p1 {
-            p2_score += score;
+            p2_score += score as f32;
         } else {
-            p1_score += score / 2.0;
-            p2_score += score / 2.0;
+            p1_score += score as f32 / 2.0;
+            p2_score += score as f32 / 2.0;
         }
     }
 
@@ -140,9 +145,9 @@ fn p1_wins(p1: [f64; NUM_CASTLES], p2: [f64; NUM_CASTLES]) -> bool {
 
 // run_sims takes in a bunch of players, and returns some number of the best players
 fn run_sims(
-    players: &[[f64; NUM_CASTLES]],
+    players: &[[i16; NUM_CASTLES]],
     num_to_return: usize,
-) -> Vec<([f64; NUM_CASTLES], usize)> {
+) -> Vec<([i16; NUM_CASTLES], usize)> {
     // Create a HashMap to store the player's index and their score
     let mut result_map: HashMap<usize, usize> = (0..players.len()).map(|idx| (idx, 0)).collect();
 
@@ -229,7 +234,7 @@ fn main() {
         .expect("Could not parse the number of children to generate");
 
     // Get the size_distribution with which to vary the split points
-    let size_distribution: f64 = matches
+    let size_distribution: i16 = matches
         .value_of("size_distribution")
         .unwrap_or("5.0")
         .parse()
@@ -280,8 +285,6 @@ fn test_split_to_array_round_trip() {
         let distances = split_points_to_array(&split_points);
         let split_points_back = array_to_split_points(distances);
         // Iterate over split_points and split_points_back, and make sure they are the same, to some level of precision.
-        for (p1, p2) in split_points.iter().zip(split_points_back.iter()) {
-            assert!((p1 - p2).abs() < 0.00000001);
-        }
+        assert_eq!(split_points, split_points_back);
     }
 }
