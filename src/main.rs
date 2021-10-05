@@ -4,6 +4,9 @@ use clap::{App, Arg};
 use itertools::Itertools;
 use rand::Rng;
 
+#[macro_use]
+extern crate log;
+
 const NUM_CASTLES: usize = 10;
 const NUM_SPLITS: usize = NUM_CASTLES - 1;
 
@@ -99,7 +102,7 @@ fn generate_random_children(
             if new_num < 0 {
                 child_splits[i] = 0;
             } else if new_num > 100 {
-                child_splits[i] = 100
+                child_splits[i] = 100;
             } else {
                 child_splits[i] = new_num;
             }
@@ -108,11 +111,6 @@ fn generate_random_children(
         // Sort the split_points, so that the numbers are in ascending order.
         child_splits.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        // Round all of the numbers to 1 decimal place
-        // for i in 0..child_splits.len() {
-        //     child_splits[i] =
-        //         child_splits[i].trunc() + (child_splits[i].fract() * 10).trunc() / 10;
-        // }
         children_splits.push(child_splits);
     }
 
@@ -124,32 +122,51 @@ fn generate_random_children(
 }
 
 // sim will compare two length 10 arrays and see who wins
-fn p1_wins(p1: [i16; NUM_CASTLES], p2: [i16; NUM_CASTLES]) -> bool {
+fn battle(p1: [i16; NUM_CASTLES], p2: [i16; NUM_CASTLES]) -> (f32, f32) {
     let mut p1_score = 0_f32;
     let mut p2_score = 0_f32;
 
     for (castle_num, (p1, p2)) in p1.iter().zip(p2.iter()).enumerate() {
-        let score = (castle_num + 1) as i16;
+        let score = (castle_num + 1) as f32;
         if p1 > p2 {
-            p1_score += score as f32;
+            p1_score += score;
         } else if p2 > p1 {
-            p2_score += score as f32;
+            p2_score += score;
         } else {
-            p1_score += score as f32 / 2.0;
-            p2_score += score as f32 / 2.0;
+            p1_score += score / 2.0;
+            p2_score += score / 2.0;
         }
     }
 
-    p1_score > p2_score
+    (p1_score, p2_score)
+}
+
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct BattleScore {
+    wins: u32,
+    ties: u32,
+    losses: u32,
+}
+
+impl BattleScore {
+    fn new() -> Self {
+        BattleScore {
+            wins: 0,
+            losses: 0,
+            ties: 0,
+        }
+    }
 }
 
 // run_sims takes in a bunch of players, and returns some number of the best players
 fn run_sims(
     players: &[[i16; NUM_CASTLES]],
     num_to_return: usize,
-) -> Vec<([i16; NUM_CASTLES], usize)> {
+) -> Vec<([i16; NUM_CASTLES], BattleScore)> {
     // Create a HashMap to store the player's index and their score
-    let mut result_map: HashMap<usize, usize> = (0..players.len()).map(|idx| (idx, 0)).collect();
+    let mut result_map: HashMap<usize, BattleScore> = (0..players.len())
+        .map(|idx| (idx, BattleScore::new()))
+        .collect();
 
     // For each combination of two players, run a simulation, and store the result in the
     // result
@@ -160,10 +177,32 @@ fn run_sims(
         .for_each(|players| {
             let (idx1, p1) = players[0];
             let (idx2, p2) = players[1];
-            if p1_wins(*p1, *p2) {
-                result_map.insert(idx1, result_map[&idx1] + 1);
+            let (p1_score, p2_score) = battle(*p1, *p2);
+            if p1_score > p2_score {
+                let mut winner_score = result_map[&idx1];
+                winner_score.wins += 1;
+                result_map.insert(idx1, winner_score);
+
+                let mut loser_score = result_map[&idx2];
+                loser_score.losses += 1;
+                result_map.insert(idx2, loser_score);
+            } else if p2_score > p1_score {
+                let mut winner_score = result_map[&idx2];
+                winner_score.wins += 1;
+                result_map.insert(idx2, winner_score);
+
+                let mut loser_score = result_map[&idx1];
+                loser_score.losses += 1;
+                result_map.insert(idx1, loser_score);
             } else {
-                result_map.insert(idx2, result_map[&idx2] + 1);
+                // It was a tie
+                let mut p1score = result_map[&idx1];
+                p1score.ties += 1;
+                result_map.insert(idx1, p1score);
+
+                let mut p2score = result_map[&idx2];
+                p2score.ties += 1;
+                result_map.insert(idx2, p2score);
             }
         });
 
@@ -177,6 +216,9 @@ fn run_sims(
 }
 
 fn main() {
+    // Start up a log
+    env_logger::init();
+
     // Create the clap App
     let matches = App::new("rs_battle_for_nation")
         .version("0.1.0")
@@ -241,7 +283,7 @@ fn main() {
         .expect("Could not parse the size distribution");
 
     let pool_size: usize = n_children * n_to_keep;
-    println!("Pool size: {}", pool_size);
+    info!("Pool size: {}", pool_size);
 
     // Create the initial population
     let mut players = (0..pool_size)
@@ -255,7 +297,7 @@ fn main() {
     for gen_number in 0..n {
         // Print out the generation if it's a multiple of 500
         if gen_number % 500 == 0 {
-            println!("Generation {}", gen_number);
+            info!("Generation {}", gen_number);
         }
 
         best_players = run_sims(&players, n_to_keep);
@@ -266,13 +308,13 @@ fn main() {
             .collect::<Vec<_>>();
     }
     // Print out how long each iteration took
-    println!(
-        "Each iteration took: {} ms",
+    info!(
+        "Each generation took: {} ms",
         starttime.elapsed().as_secs_f64() / 1e-3 / (n as f64)
     );
 
     // Print the best players
-    println!("{:?}", best_players);
+    info!("{:?}", best_players);
 }
 
 #[test]
