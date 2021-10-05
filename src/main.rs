@@ -249,7 +249,7 @@ fn main() {
             Arg::with_name("size_distribution")
                 .short("s")
                 .long("size_distribution")
-                .help("How wide of a rangh, plus and minus, to go from each split point")
+                .help("How wide of a range, plus and minus, to go from each split point")
                 .takes_value(true),
         )
         .get_matches();
