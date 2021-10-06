@@ -2,6 +2,10 @@ use std::{collections::HashMap, time::Instant};
 
 use clap::{App, Arg};
 use itertools::Itertools;
+use num::{
+    bigint::{BigInt, ToBigInt},
+    traits::One,
+};
 use rand::Rng;
 
 #[macro_use]
@@ -215,6 +219,14 @@ fn run_sims(
         .collect()
 }
 
+fn n_choose_k(n: u64, k: u64) -> BigInt {
+    let mut res = BigInt::one();
+    for i in 0..k {
+        res = (res * (n - i).to_bigint().unwrap()) / (i + 1).to_bigint().unwrap();
+    }
+    res
+}
+
 fn main() {
     // Start up a log
     env_logger::init();
@@ -311,6 +323,11 @@ fn main() {
     info!(
         "Each generation took: {} ms",
         starttime.elapsed().as_secs_f64() / 1e-3 / (n as f64)
+    );
+    info!(
+        "Total time for {} battles was {} s",
+        pool_size * n * n_choose_k(pool_size as u64, 2),
+        starttime.elapsed().as_secs_f64()
     );
 
     // Print the best players
