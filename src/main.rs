@@ -296,6 +296,7 @@ fn main() {
 
     let pool_size: usize = n_children * n_to_keep;
     info!("Pool size: {}", pool_size);
+    let report_number = 50000 / pool_size;
 
     // Create the initial population
     let mut players = (0..pool_size)
@@ -308,7 +309,7 @@ fn main() {
     let starttime = Instant::now();
     for gen_number in 0..n {
         // Print out the generation if it's a multiple of 500
-        if gen_number % 500 == 0 {
+        if gen_number % report_number == 0 {
             info!("Generation {}", gen_number);
         }
 
