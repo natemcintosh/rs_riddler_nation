@@ -2,7 +2,10 @@ extern crate test;
 
 use itertools::Itertools;
 use rand::Rng;
-use std::cmp::Ordering;
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
 
 /// battle will compare two length 10 arrays and see who wins
 pub fn battle(p1: [i16; 10], p2: [i16; 10]) -> (f32, f32) {
@@ -38,8 +41,8 @@ pub fn gen_uniform_random_split_points() -> [i16; 9] {
     let mut split_points = [0_i16; 9];
 
     // Fill the array with random numbers between 0.0 and 100.0.
-    for i in 0..split_points.len() {
-        split_points[i] = rng.gen_range(0..=100);
+    for sp in &mut split_points {
+        *sp = rng.gen_range(0..=100);
     }
 
     // Sort the split_points, so that the numbers are in ascending order.
@@ -105,20 +108,20 @@ pub fn _generate_random_children(
 
     for _ in 0..n_children {
         let mut child_splits = split_points;
-        for i in 0..child_splits.len() {
+        for split_pt in &mut child_splits {
             let is_positive = rng.gen::<i32>().is_positive();
             let new_num = match is_positive {
-                true => child_splits[i] + rng.gen_range(0..variance_range),
-                false => child_splits[i] - rng.gen_range(0..variance_range),
+                true => *split_pt + rng.gen_range(0..variance_range),
+                false => *split_pt - rng.gen_range(0..variance_range),
             };
 
             // Make sure the new number is between 0.0 and 100.0
             if new_num < 0 {
-                child_splits[i] = 0;
+                *split_pt = 0;
             } else if new_num > 100 {
-                child_splits[i] = 100;
+                *split_pt = 100;
             } else {
-                child_splits[i] = new_num;
+                *split_pt = new_num;
             }
         }
 
@@ -134,9 +137,9 @@ pub fn _generate_random_children(
 
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BattleScore {
-    wins: u32,
-    ties: u32,
-    losses: u32,
+    pub wins: u32,
+    pub ties: u32,
+    pub losses: u32,
 }
 
 impl BattleScore {
@@ -149,9 +152,9 @@ impl BattleScore {
     }
 }
 
-/// run_battles takes in a bunch of players, and returns some number of the best players
-/// in ascending order (last place first, winner has highest index)
-pub fn run_battles(
+/// run_battles_slice takes in a bunch of players, and returns some number of the best
+/// players in ascending order (last place first, winner has highest index)
+pub fn _run_battles_slice(
     players: &[[i16; 10]],
     num_to_return: Option<usize>,
 ) -> Vec<([i16; 10], BattleScore)> {
@@ -195,6 +198,71 @@ pub fn run_battles(
         .map(|(idx, &battle_score)| (players[idx], battle_score))
         .take(n_take)
         .collect()
+}
+
+fn bs_with_1_win() -> BattleScore {
+    let mut bs = BattleScore::new();
+    bs.wins += 1;
+    bs
+}
+
+fn bs_with_1_loss() -> BattleScore {
+    let mut bs = BattleScore::new();
+    bs.losses += 1;
+    bs
+}
+
+fn bs_with_1_tie() -> BattleScore {
+    let mut bs = BattleScore::new();
+    bs.ties += 1;
+    bs
+}
+
+/// run_battles_set takes in a bunch of players, and returns some number of the best
+/// players in ascending order (last place first, winner has highest index)
+pub fn run_battles_set(players: &HashSet<[i16; 10]>) -> HashMap<[i16; 10], BattleScore> {
+    // Create a HashMap to store the player's index and their score
+    let mut results: HashMap<[i16; 10], BattleScore> = HashMap::with_capacity(players.len());
+
+    // For each combination of two players, run a simulation, and store the result in the
+    // result
+    players.iter().combinations(2).for_each(|players| {
+        let p1 = players[0];
+        let p2 = players[1];
+        let (p1_score, p2_score) = battle(*p1, *p2);
+        if p1_score > p2_score {
+            // Add a win, or create new entry if needed
+            results
+                .entry(*p1)
+                .and_modify(|bs| bs.wins += 1)
+                .or_insert_with(bs_with_1_win);
+            // Add a loss, or create new entry if needed
+            results
+                .entry(*p2)
+                .and_modify(|bs| bs.losses += 1)
+                .or_insert_with(bs_with_1_loss);
+        } else if p2_score > p1_score {
+            results
+                .entry(*p2)
+                .and_modify(|bs| bs.wins += 1)
+                .or_insert_with(bs_with_1_win);
+            results
+                .entry(*p1)
+                .and_modify(|bs| bs.losses += 1)
+                .or_insert_with(bs_with_1_loss);
+        } else {
+            // It was a tie
+            results
+                .entry(*p1)
+                .and_modify(|bs| bs.ties += 1)
+                .or_insert_with(bs_with_1_tie);
+            results
+                .entry(*p2)
+                .and_modify(|bs| bs.ties += 1)
+                .or_insert_with(bs_with_1_tie);
+        }
+    });
+    results
 }
 
 #[cfg(test)]
@@ -259,11 +327,31 @@ mod tests {
         let p3: [i16; 10] = [90, 0, 0, 0, 0, 0, 0, 0, 0, 10];
 
         let players = vec![p1, p2, p3];
-        let got: Vec<[i16; 10]> = run_battles(&players, None)
+        let got: Vec<[i16; 10]> = _run_battles_slice(&players, None)
             .iter()
             .map(|(troops, _)| *troops)
             .collect();
         let want = vec![p2, p3, p1];
         assert_eq!(want, got);
+    }
+
+    #[bench]
+    fn bench_run_battles_slice(b: &mut Bencher) {
+        let p1: [i16; 10] = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
+        let p2: [i16; 10] = [100, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let p3: [i16; 10] = [90, 0, 0, 0, 0, 0, 0, 0, 0, 10];
+
+        let players = vec![p1, p2, p3];
+        b.iter(|| _run_battles_slice(&players, None));
+    }
+
+    #[bench]
+    fn bench_run_battles_set(b: &mut Bencher) {
+        let p1: [i16; 10] = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
+        let p2: [i16; 10] = [100, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let p3: [i16; 10] = [90, 0, 0, 0, 0, 0, 0, 0, 0, 10];
+
+        let players = HashSet::from([p1, p2, p3]);
+        b.iter(|| run_battles_set(&players));
     }
 }
