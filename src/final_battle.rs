@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
-use std::collections::HashSet;
 
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 
 use crate::core::{self};
 
@@ -23,8 +23,8 @@ pub fn tournament(players: &[[i16; 10]], verbose: bool) -> Vec<[i16; 10]> {
     // simulation, since they would get the same score in the end.
     // Maybe I want to use a BTreeSet bc they are ordered (would have to impl Ord). Will
     // investigate later.
-    let mut pl: HashSet<[i16; 10]> = players.iter().copied().collect();
-    let mut res: Vec<[i16; 10]> = vec![];
+    let mut pl: FxHashSet<[i16; 10]> = players.iter().copied().collect();
+    let mut res: Vec<[i16; 10]> = Vec::with_capacity(players.len());
 
     // let mut n_ties: u32 = 0;
     let mut round: usize = 0;
@@ -83,10 +83,31 @@ pub fn tournament(players: &[[i16; 10]], verbose: bool) -> Vec<[i16; 10]> {
             // And removed from `pl`
             pl.remove(sorted[0].0);
         }
-        
+
         if verbose {
             println!("Finished round {round}");
         }
+    }
+
+    // Determine which of the two wins the one-on-oen battle
+    let top_two: Vec<[i16; 10]> = pl.iter().copied().collect();
+    let (p1_score, p2_score) = core::battle(top_two[0], top_two[1]);
+    match p1_score.partial_cmp(&p2_score) {
+        Some(o) => match o {
+            Ordering::Less => {
+                res.push(top_two[0]);
+                res.push(top_two[1]);
+            }
+            Ordering::Equal => {
+                res.push(top_two[0]);
+                res.push(top_two[1]);
+            }
+            Ordering::Greater => {
+                res.push(top_two[1]);
+                res.push(top_two[0]);
+            }
+        },
+        None => panic!("Battle score was NaN"),
     }
 
     // if n_ties > 0 {

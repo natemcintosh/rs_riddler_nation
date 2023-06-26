@@ -31,6 +31,7 @@ fn create_pool(n_competitors: usize) -> Vec<[i16; 10]> {
 }
 
 fn main() {
+    let start_time = std::time::Instant::now();
     let args = Args::parse();
     println!("Setting up tournaments");
 
@@ -45,11 +46,13 @@ fn main() {
         // Get the best performer of each
         .map(|res| *res.last().expect("The tournament produced an empty vector"))
         .collect();
-    
+
     println!("Running final tournament of winners of small tournaments");
 
     // Finally, run a tournament with all the winners
     let res = final_battle::tournament(&winners, true);
     let winner: &[i16; 10] = res.last().expect("The tournament produced an empty vector");
+
     println!("Final winner is {:?}", winner);
+    println!("Run time was {}s", start_time.elapsed().as_secs());
 }

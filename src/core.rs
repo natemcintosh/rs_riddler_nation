@@ -2,10 +2,8 @@ extern crate test;
 
 use itertools::Itertools;
 use rand::Rng;
-use std::{
-    cmp::Ordering,
-    collections::{HashMap, HashSet},
-};
+use rustc_hash::{FxHashMap, FxHashSet};
+use std::cmp::Ordering;
 
 /// battle will compare two length 10 arrays and see who wins
 pub fn battle(p1: [i16; 10], p2: [i16; 10]) -> (f32, f32) {
@@ -220,9 +218,9 @@ fn bs_with_1_tie() -> BattleScore {
 
 /// run_battles_set takes in a bunch of players, and returns some number of the best
 /// players in ascending order (last place first, winner has highest index)
-pub fn run_battles_set(players: &HashSet<[i16; 10]>) -> HashMap<[i16; 10], BattleScore> {
+pub fn run_battles_set(players: &FxHashSet<[i16; 10]>) -> FxHashMap<[i16; 10], BattleScore> {
     // Create a HashMap to store the player's index and their score
-    let mut results: HashMap<[i16; 10], BattleScore> = HashMap::with_capacity(players.len());
+    let mut results: FxHashMap<[i16; 10], BattleScore> = FxHashMap::default();
 
     // For each combination of two players, run a simulation, and store the result in the
     // result
@@ -351,7 +349,10 @@ mod tests {
         let p2: [i16; 10] = [100, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let p3: [i16; 10] = [90, 0, 0, 0, 0, 0, 0, 0, 0, 10];
 
-        let players = HashSet::from([p1, p2, p3]);
+        let mut players = FxHashSet::default();
+        players.insert(p1);
+        players.insert(p2);
+        players.insert(p3);
         b.iter(|| run_battles_set(&players));
     }
 }
